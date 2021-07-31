@@ -1,16 +1,33 @@
+# Ignore Gradle project-specific cache directory and the Gradle install
+# ---------------------------------------------------------------------
+.gradle
+
+# Ignore build output directories
+# -------------------------------
+build
+bin
+
+# Ignore IDE files (these are IDE dependent and mostly generated)
+# ---------------------------------------------------------------
+
+# Eclipse
+.settings
+.classpath
+.project
+
+# IntelliJ
+.idea
+
+# vim backup files
+*~
+
 # Compiled class file
 *.class
 
 # Log file
 *.log
 
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
+# Package Files 
 *.jar
 *.war
 *.nar
