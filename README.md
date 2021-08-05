@@ -109,8 +109,11 @@ By default, `xml2jsonl` processes all child objects of the root object. The `--t
 
 ## Testing
 
-The code comes with a range of unit tests written with
-[JUnit5](https://junit.org/junit5/) and [Mockito](https://site.mockito.org/). Run `./gradlew test` to run the unit tests and `./gradlew acceptance` to run acceptance tests. These are potentially longer running and work with more complex data.
+The code comes with a range of unit tests written with [Kotest](https://kotest.io/). To run in IntelliJ, install the 
+[Kotest Plugin](https://kotest.io/docs/intellij/intellij-plugin.html).
+To run in Gradle, run `./gradlew test` to run the unit tests 
+and `./gradlew acceptance` to run acceptance tests. These are potentially 
+longer running and work with more complex data.
 
 The tests are run routinely on (Jenkins? GitHub Actions? **TODO**)
 
@@ -128,3 +131,4 @@ Some of these, such as the runtime performance, were expected, and I had decided
 out that the V8 JavaScript engine has a limit on the length of a string that caused conversion to JSON to tail for some 
 page entries in the Wikipedia data. While considering the necessary re-design of the tool, I decided it would be better
 to re-implement in Kotlin rather than to try to address the limitations of the JavaScript version.
+
