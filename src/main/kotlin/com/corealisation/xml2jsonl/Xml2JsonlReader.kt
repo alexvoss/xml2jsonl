@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.transform
 import java.io.InputStream
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.XMLStreamConstants.*
@@ -118,6 +119,7 @@ class Xml2JsonlReader(
         val element : ObjectNode = this.mapper.createObjectNode()
         element.put("__t", this.reader.localName)
         element.put("__x", "")
+
         val childElements : ArrayNode = this.mapper.createArrayNode()
         element.replace("__c", childElements)
 
@@ -175,4 +177,82 @@ class Xml2JsonlReader(
             event = this.reader.next()
         }
     }
+
+
+    /**
+     * Return a [Flow] of [ObjectNode]s based on [getFlow] but simplified according
+     * to the following rules. For each object:
+     *
+     * * child elements are simplified first
+     * * child elements are stored as JSON properties using their tag names instead of
+     *   under "__c"
+     * * repeating child elements are stored in [ArrayNode]s
+     * * child element with the tag name "__c" remain where they are and just have their
+     *   JSON property "__t" removed
+     * * attributes are turned into JSON properties as long as there are no name
+     *   clashes
+     * * text-only nodes are simplified to a text property
+     */
+    public fun getSimplifiedFlow() : Flow<ObjectNode> {
+        return getFlow().transform {jsonObject ->
+            simplifyObject(jsonObject)
+            emit(jsonObject)
+        }
+    }
+
+    /**
+     * Simplifies one object according to the rules laid out in [getSimplifiedFlow].
+     */
+    private fun simplifyObject(jsonObject : ObjectNode) {
+        simplifyChildren(jsonObject)
+        childrenToProperties(jsonObject)
+        attributesToProperties(jsonObject)
+        textToProperty(jsonObject)
+    }
+    /**
+     * Go through all the children that are objects and simplify them.
+     */
+    private fun simplifyChildren(json: ObjectNode) {
+
+        val children = json.get("__c")
+        require(children is ArrayNode) {"Children of an object should be stored in an ArrayNode."}
+
+        children.forEach { child ->
+            require(child is ObjectNode) {"Child should be ObjectNode!"}
+            simplifyObject(child)
+        }
+    }
+
+    /**
+     *
+     */
+    private fun childrenToProperties(json: ObjectNode) {
+
+        val children = json.get("__c")
+        require(children is ArrayNode) {"Children of an object should be stored in an ArrayNode."}
+
+        val keep : ArrayNode = this.mapper.createArrayNode()
+        children.forEach { child ->
+            require(child is ObjectNode) {"Child should be ObjectNode!"}
+            var tagname : String = child.get("__t").asText()
+            child.remove("__t")
+            val value = json.get(tagname)
+            if(value is ArrayNode) {
+                value.add(child)
+            } else {
+                val newArray = this.mapper.createArrayNode()
+                newArray.add(value)
+                json.replace(tagname, newArray)
+            }
+        }
+    }
+
+    private fun attributesToProperties(json: ObjectNode) {
+
+    }
+
+    private fun textToProperty(json: ObjectNode) {
+
+    }
+
 }
