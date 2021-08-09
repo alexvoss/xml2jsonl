@@ -41,7 +41,7 @@ class Xml2JsonlReaderTests : BehaviorSpec({
                 )
                 val jsonObjects = reader.getFlow().toList()
                 for(json in jsonObjects) {
-                    if(json.get("__t")?.asText().equals("root")) {
+                    if(json.get(":t")?.asText().equals("root")) {
                         fail("root element was not ingnored.")
                     }
                 }
@@ -55,8 +55,8 @@ class Xml2JsonlReaderTests : BehaviorSpec({
                     inputStream = ByteArrayInputStream(doc1.toByteArray())
                 )
                 val json = reader.getFlow().first()
-                assert(json.has("__t"))
-                assert(json.get("__t").asText().equals("root"))
+                assert(json.has(":t"))
+                assert(json.get(":t").asText().equals("root"))
             }
         }
 
@@ -68,8 +68,8 @@ class Xml2JsonlReaderTests : BehaviorSpec({
                     inputStream = ByteArrayInputStream(doc1.toByteArray())
                 )
                 val json = reader.getFlow().first()
-                assert(json.has("__t"))
-                assert(json.get("__t").asText().equals("a"))
+                assert(json.has(":t"))
+                assert(json.get(":t").asText().equals("a"))
             }
         }
 
@@ -83,13 +83,13 @@ class Xml2JsonlReaderTests : BehaviorSpec({
                 )
                 val json = reader.getFlow().first()
                 println(json.toPrettyString())
-                assert(json.has("__t"))
-                assert(json.get("__t").asText().equals("c"))
+                assert(json.has(":t"))
+                assert(json.get(":t").asText().equals("c"))
             }
         }
 
         When("element has child elements") {
-            Then("child elements included in '__c' attribute") {
+            Then("child elements included in ':c' attribute") {
                 Then("json is emitted") {
                     val reader = Xml2JsonlReader(
                         procRoot = false,
@@ -97,17 +97,17 @@ class Xml2JsonlReaderTests : BehaviorSpec({
                         inputStream = ByteArrayInputStream(doc1.toByteArray())
                     )
                     val json = reader.getFlow().first()
-                    assert(json.has("__c"))
-                    assert(json.get("__c") is ArrayNode)
-                    val childElements : ArrayNode = json.get("__c") as ArrayNode
+                    assert(json.has(":c"))
+                    assert(json.get(":c") is ArrayNode)
+                    val childElements : ArrayNode = json.get(":c") as ArrayNode
                     assert(childElements.get(0) is ObjectNode)
-                    assert((childElements.get(0) as ObjectNode).get("__t")?.asText().equals("b"))
+                    assert((childElements.get(0) as ObjectNode).get(":t")?.asText().equals("b"))
                 }
             }
         }
 
         When("using simplifyFlow()") {
-            Then("child elements are moved from '__c'") {
+            Then("child elements are moved from ':c'") {
                 val reader = Xml2JsonlReader(
                     procRoot = false,
                     allTop = true,
