@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.runBlocking
 import java.io.InputStream
 import java.io.OutputStream
@@ -74,8 +75,8 @@ class Main : CliktCommand() {
                 tags = tags,
                 inputStream = inputStream
             )
-            reader.getFlow().collect { json ->
-                println("RESULT: "+json.toPrettyString())
+            reader.getSimplifiedFlow().collect { json ->
+                println(json.toPrettyString())
             }
         }
     }
