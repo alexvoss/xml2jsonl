@@ -16,6 +16,7 @@
 
 package com.corealisation.xml2jsonl
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -33,14 +34,14 @@ import javax.xml.stream.XMLStreamReader
  * elements and their content into JSON objects. The reason to use StAX rather
  * than SAX is that it is a
  * [pull parser](https://docs.oracle.com/javase/tutorial/jaxp/stax/why.html),
- * which makes it easier to work with when processing data lazyly.
+ * which makes it easier to work with when processing data lazily.
  *
  * The JSON objects are returned as a [Kotlin Flow](https://kotlinlang.org/docs/flow.html),
  * allowing them to be processed lazily in a manner similar to the Java Steam API.
  *
  * _Note_: XML parsing is not namespace-aware.
  *
- * @param[allTop] to be true if all children of the root element are to be processed (trure by default)
+ * @param[allTop] to be true if all children of the root element are to be processed (true by default)
  * @param[procRoot] to be true if the root of the XML document is to be processed (false by default)
  * @param[tags] a list of the tag names of elements to process, matched anywhere in the document
  * @constructor Sets up the StAX event reader.
@@ -49,7 +50,7 @@ import javax.xml.stream.XMLStreamReader
 class Xml2JsonlReader(
     val allTop: Boolean = true,
     val procRoot: Boolean = false,
-    val tags: List<String> = emptyList<String>(),
+    val tags: List<String> = emptyList(),
     inputStream: InputStream
 )  {
 
@@ -67,9 +68,9 @@ class Xml2JsonlReader(
      * Return a [Flow] of [ObjectNode]s by calling [getNextObject] while the XML
      * parser produces new elements.
      */
-    public fun getFlow() : Flow<ObjectNode> = flow {
+    fun getFlow() : Flow<ObjectNode> = flow {
         while(reader.hasNext()) {
-            var json : ObjectNode? = getNextObject()
+            val json : ObjectNode? = getNextObject()
             if(json != null) {
                 emit(json)
             }
@@ -114,13 +115,13 @@ class Xml2JsonlReader(
     /**
      * Convert an XML element to a JSON [ObjectNode].
      */
-    private fun convertElement(): ObjectNode? {
+    private fun convertElement(): ObjectNode {
 
         val element : ObjectNode = this.mapper.createObjectNode()
-        element.put("__t", this.reader.localName)
+        element.put(":t", this.reader.localName)
 
         val childElements : ArrayNode = this.mapper.createArrayNode()
-        element.replace("__c", childElements)
+        element.replace(":c", childElements)
 
         addAttributes(element)
         addChildNodes(element, childElements)
@@ -134,7 +135,7 @@ class Xml2JsonlReader(
      */
     private fun convertRoot(): ObjectNode {
         val root = this.mapper.createObjectNode()
-        root.put("__t", this.reader.localName)
+        root.put(":t", this.reader.localName)
         addAttributes(root)
         return root
     }
@@ -149,18 +150,18 @@ class Xml2JsonlReader(
             for (i in 0 until reader.attributeCount) {
                 attributes.put(reader.getAttributeLocalName(i), reader.getAttributeValue(i))
             }
-            element.replace("__a", attributes)
+            element.replace(":a", attributes)
         }
     }
 
     /**
      * Add all the child nodes to an element. This can be elements, which get added to
-     * an array under "__c" or text nodes, which get accumulated and are stored under
-     * "__x".
+     * an array under ":c" or text nodes, which get accumulated and are stored under
+     * ":x".
      */
     private fun addChildNodes(element : ObjectNode, childElements : ArrayNode) {
         var event = this.reader.next()
-        var text : StringBuffer = StringBuffer()
+        val text = StringBuffer()
         while (event != END_ELEMENT) {
             when(event) {
                 START_ELEMENT -> {
@@ -170,15 +171,17 @@ class Xml2JsonlReader(
                     text.append(reader.text)
                 }
                 else -> {
-                    println("ignoring: ${event}")
+                    println("ignoring: $event")
                 }
             }
-            element.put("__x", text.toString())
+            val textTrimmed = text.toString().trim()
+            if(textTrimmed != "") {
+                element.put(":x", textTrimmed)
+            }
             event = this.reader.next()
         }
 
     }
-
 
     /**
      * Return a [Flow] of [ObjectNode]s based on [getFlow] but simplified according
@@ -186,15 +189,15 @@ class Xml2JsonlReader(
      *
      * 1. child elements are simplified first
      * 2. child elements are stored as JSON properties using their tag names instead of
-     *    under "__c"
+     *    under ":c"
      * 3. repeating child elements are stored in [ArrayNode]s
-     * 4. child element with the tag name "__c" remain where they are and just have their
-     *    JSON property "__t" removed
+     * 4. child element with the tag name ":c" remain where they are and just have their
+     *    JSON property ":t" removed
      * 5. attributes are turned into JSON properties as long as there are no name
      *    clashes
      * 6. text-only nodes are simplified to a text property
      */
-    public fun getSimplifiedFlow() : Flow<ObjectNode> {
+    fun getSimplifiedFlow() : Flow<ObjectNode> {
         return getFlow().transform {jsonObject ->
             simplifyObject(jsonObject)
             emit(jsonObject)
@@ -207,8 +210,8 @@ class Xml2JsonlReader(
     private fun simplifyObject(jsonObject : ObjectNode) {
         simplifyChildren(jsonObject)
         childrenToProperties(jsonObject)
+        textOnlyToString(jsonObject)
         attributesToProperties(jsonObject)
-        textToProperty(jsonObject)
     }
 
     /**
@@ -217,7 +220,7 @@ class Xml2JsonlReader(
      */
     private fun simplifyChildren(json: ObjectNode) {
 
-        val children = json.get("__c")
+        val children = json.get(":c")
         require(children is ArrayNode) {"Children of an object should be stored in an ArrayNode."}
 
         children.forEach { child ->
@@ -232,31 +235,84 @@ class Xml2JsonlReader(
      */
     private fun childrenToProperties(json: ObjectNode) {
 
-        val children = json.get("__c")
+        val children = json.get(":c")
         require(children is ArrayNode) {"Children of an object should be stored in an ArrayNode."}
 
-        val keep : ArrayNode = this.mapper.createArrayNode()
         children.forEach { child ->
             require(child is ObjectNode) {"Child should be ObjectNode!"}
-            var tagname : String = child.get("__t").asText()
-            child.remove("__t")
-            val value = json.get(tagname)
-            if(value is ArrayNode) {
-                value.add(child)
+            val name : String = child.get(":t").asText()
+            child.remove(":t")
+            addProperty(json, name, child)
+        }
+        json.remove(":c")
+    }
+
+    /**
+     * Add a [JsonNode] to the [ObjectNode] under the given name. If the property
+     * already exists it will be turned into a multi-valued property using an
+     * [ArrayNode].
+     */
+    private fun addProperty(
+        json: ObjectNode,
+        name: String,
+        propValue: JsonNode?
+    ) {
+        if (json.has(name)) {
+            val value = json.get(name)
+            if (value is ArrayNode) {
+                value.add(value)
             } else {
                 val newArray = this.mapper.createArrayNode()
                 newArray.add(value)
-                json.replace(tagname, newArray)
+                newArray.add(value)
+                json.replace(name, newArray)
+            }
+        } else {
+            json.replace(name, propValue)
+        }
+    }
+
+    /**
+     * Turn attributes under ":a" into properties.
+     */
+    private fun attributesToProperties(json: ObjectNode) {
+        if(!json.has(":a")) return
+        val attrs = json.get(":a")
+        if(attrs.isObject) {
+            attrs.fieldNames().forEach {
+                val value = attrs.get(it)
+                addProperty(json, it, value)
+            }
+        }
+        json.remove(":a")
+    }
+
+    /**
+     * Turn all the properties from an [ObjectNode] to a String.
+     */
+    private fun textOnlyToString(json: ObjectNode) {
+        json.fieldNames().forEach {
+            val value : JsonNode = json.get(it)
+            if(value is ObjectNode) {
+                if(isTextOnlyObject(value)) {
+                    json.put(it, value.get(":x").asText())
+                }
             }
         }
     }
 
-    private fun attributesToProperties(json: ObjectNode) {
-
+    /**
+     * Checks if the given node is a text-only node, i.e., it only has one
+     * property, ":x".
+     */
+    private fun isTextOnlyObject(value: JsonNode) : Boolean {
+        if(!value.has(":x")) return false
+        var i = 0
+        val iterator = value.fieldNames()
+        while (iterator.hasNext()) {
+            i++; iterator.next()
+        }
+        if(i > 1) return false
+        return true
     }
-
-    private fun textToProperty(json: ObjectNode) {
-
-    }
-
 }
