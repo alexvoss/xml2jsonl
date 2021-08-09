@@ -39,6 +39,11 @@ class Main : CliktCommand() {
         help = "process the root element as well, creating an additional JSON object"
     ).flag(default=false)
 
+    private val simplify by option(
+        "-s", "--simplify",
+        help="simplify the JSON objects to make them easier to work with"
+    ).flag(default=false)
+
     private val input by option(
         "-i", "--input",
         help = "provides an input file to read from. The default is to read from standard input."
@@ -53,7 +58,6 @@ class Main : CliktCommand() {
         "-t", "--tags",
         help = "the tag name(s) of elements to be extracted from the XML document parsed."
     ).multiple()
-
 
     override fun run() {
         val inputStream: InputStream = if (input == null) {
@@ -75,7 +79,10 @@ class Main : CliktCommand() {
                 tags = tags,
                 inputStream = inputStream
             )
-            reader.getSimplifiedFlow().collect { json ->
+
+            val flow = if(simplify) reader.getSimplifiedFlow() else reader.getFlow()
+
+            flow.collect { json ->
                 println(json.toPrettyString())
             }
         }
