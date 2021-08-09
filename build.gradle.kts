@@ -16,8 +16,8 @@ repositories {
 
 dependencies {
 
-    // https://github.com/xenomachina/kotlin-argparser
-    implementation("com.xenomachina:kotlin-argparser:2.0.7")
+    // https://ajalt.github.io/clikt/
+    implementation("com.github.ajalt.clikt:clikt:3.2.0")
 
     // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
     implementation("com.fasterxml.jackson.core:jackson-databind:2.12.4")
