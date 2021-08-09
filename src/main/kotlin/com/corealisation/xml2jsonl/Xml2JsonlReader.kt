@@ -68,7 +68,7 @@ class Xml2JsonlReader(
      * parser produces new elements.
      */
     public fun getFlow() : Flow<ObjectNode> = flow {
-        if(reader.hasNext()) {
+        while(reader.hasNext()) {
             var json : ObjectNode? = getNextObject()
             if(json != null) {
                 emit(json)
@@ -81,13 +81,13 @@ class Xml2JsonlReader(
      * no more data to be returned.
      */
     private fun getNextObject() : ObjectNode? {
-        require(scanToNextElement() == START_ELEMENT) {
-            "The document does not contain any elements."
-        }
+        val event = scanToNextElement()
+        if(event == END_DOCUMENT) return null
+
         if(this.atRoot) {
             this.atRoot = false
             if(this.procRoot) return convertRoot()
-            if(scanToNextElement() != START_ELEMENT) return null
+            if(scanToNextElement() == END_DOCUMENT) return null
         }
         do {
             if(this.allTop || this.reader.localName in tags) {
@@ -105,7 +105,7 @@ class Xml2JsonlReader(
      */
     private fun scanToNextElement() : Int {
         var event = this.reader.next()
-        while (event != START_ELEMENT) {
+        while (event != START_ELEMENT && event != END_DOCUMENT) {
             event = this.reader.next()
         }
         return event
@@ -118,13 +118,12 @@ class Xml2JsonlReader(
 
         val element : ObjectNode = this.mapper.createObjectNode()
         element.put("__t", this.reader.localName)
-        element.put("__x", "")
 
         val childElements : ArrayNode = this.mapper.createArrayNode()
         element.replace("__c", childElements)
 
         addAttributes(element)
-        addChildNodes(childElements)
+        addChildNodes(element, childElements)
         return element
     }
 
@@ -159,7 +158,7 @@ class Xml2JsonlReader(
      * an array under "__c" or text nodes, which get accumulated and are stored under
      * "__x".
      */
-    private fun addChildNodes(childElements : ArrayNode) {
+    private fun addChildNodes(element : ObjectNode, childElements : ArrayNode) {
         var event = this.reader.next()
         var text : StringBuffer = StringBuffer()
         while (event != END_ELEMENT) {
@@ -174,8 +173,10 @@ class Xml2JsonlReader(
                     println("ignoring: ${event}")
                 }
             }
+            element.put("__x", text.toString())
             event = this.reader.next()
         }
+
     }
 
 
@@ -183,15 +184,15 @@ class Xml2JsonlReader(
      * Return a [Flow] of [ObjectNode]s based on [getFlow] but simplified according
      * to the following rules. For each object:
      *
-     * * child elements are simplified first
-     * * child elements are stored as JSON properties using their tag names instead of
-     *   under "__c"
-     * * repeating child elements are stored in [ArrayNode]s
-     * * child element with the tag name "__c" remain where they are and just have their
-     *   JSON property "__t" removed
-     * * attributes are turned into JSON properties as long as there are no name
-     *   clashes
-     * * text-only nodes are simplified to a text property
+     * 1. child elements are simplified first
+     * 2. child elements are stored as JSON properties using their tag names instead of
+     *    under "__c"
+     * 3. repeating child elements are stored in [ArrayNode]s
+     * 4. child element with the tag name "__c" remain where they are and just have their
+     *    JSON property "__t" removed
+     * 5. attributes are turned into JSON properties as long as there are no name
+     *    clashes
+     * 6. text-only nodes are simplified to a text property
      */
     public fun getSimplifiedFlow() : Flow<ObjectNode> {
         return getFlow().transform {jsonObject ->
@@ -209,8 +210,10 @@ class Xml2JsonlReader(
         attributesToProperties(jsonObject)
         textToProperty(jsonObject)
     }
+
     /**
-     * Go through all the children that are objects and simplify them.
+     * Executes step 1 of the simplification process described in [getSimplifiedFlow] by going
+     * through all the children that are objects and simplifying them.
      */
     private fun simplifyChildren(json: ObjectNode) {
 
@@ -224,6 +227,7 @@ class Xml2JsonlReader(
     }
 
     /**
+     * Executes step Move children
      *
      */
     private fun childrenToProperties(json: ObjectNode) {
