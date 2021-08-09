@@ -115,7 +115,7 @@ See `xml2jsonl -h` for more options.
 which are similar to [Java's Streams](https://www.oracle.com/technical-resources/articles/java/ma14-java-se-8-streams.html).
 Implementing transformations and filtering is therefore pretty straightforward. Use  
 [main.kt](alexvoss/xml2jsonl/blob/main/src/main/kotlin/main.kt) as a starting point or
-any of the `main.kt` files in the [examples](/alexvoss/xml2jsonl/tree/main/examples).
+any of the scripts in the [examples](/alexvoss/xml2jsonl/tree/main/examples).
 
 ## Testing
 
