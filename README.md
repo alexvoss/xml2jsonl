@@ -91,6 +91,15 @@ RAM, so if you have plenty of that you may not need to do anything. If you find
 you are short of memory in relation to the data, use the `-Xmx` option of the 
 JVM to increase the maximum heap size.
 
+# XML Parser Configuration
+
+XML parsers limit the number of entities they process before throwing an exception.
+Presumably this is to prevent DDOS attacks but this can be a problem when processing
+large datasets. The [solution](https://stackoverflow.com/questions/42991043/error-xml-sax-saxparseexception-while-parsing-a-xml-file-using-wikixmlj) is to run the JVM for `xml2json` with 
+the following options:
+
+```-DentityExpansionLimit=2147480000 -DtotalEntitySizeLimit=2147480000 -Djdk.xml.totalEntitySizeLimit=2147480000 -Xmx16g```
+
 ## Performance
 
 The tool was originally written in JavaScript (see History below) but has been 
