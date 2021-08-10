@@ -29,6 +29,10 @@ dependencies {
     val kotestVersion ="4.6.1"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
+
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-compress
+    implementation("org.apache.commons:commons-compress:1.21")
+
 }
 
 tasks.withType<Test> {
