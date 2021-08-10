@@ -180,7 +180,6 @@ class Xml2JsonlReader(
             }
             event = this.reader.next()
         }
-
     }
 
     /**
@@ -230,8 +229,7 @@ class Xml2JsonlReader(
     }
 
     /**
-     * Executes step Move children
-     *
+     * Converts children from :c into properties.
      */
     private fun childrenToProperties(json: ObjectNode) {
 
@@ -260,11 +258,11 @@ class Xml2JsonlReader(
         if (json.has(name)) {
             val value = json.get(name)
             if (value is ArrayNode) {
-                value.add(value)
+                value.add(propValue)
             } else {
                 val newArray = this.mapper.createArrayNode()
                 newArray.add(value)
-                newArray.add(value)
+                newArray.add(propValue)
                 json.replace(name, newArray)
             }
         } else {
